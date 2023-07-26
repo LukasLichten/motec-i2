@@ -123,13 +123,15 @@ impl<'a, S: Read + Seek> LDReader<'a, S> {
         let name = self.read_string(64)?;
         let session = self.read_string(64)?;
         let comment = self.read_string(1024)?;
-        let venue_addr = self.source.read_u16::<LittleEndian>()?;
+        let venue_addr = self.source.read_u32::<LittleEndian>()?;
+        let weather_addr = self.source.read_u32::<LittleEndian>()?;
 
         Ok(Some(Event {
             name,
             session,
             comment,
             venue_addr,
+            weather_addr
         }))
     }
 
@@ -143,10 +145,13 @@ impl<'a, S: Read + Seek> LDReader<'a, S> {
                 self.source.seek(SeekFrom::Start(event.venue_addr as u64))?;
 
                 let name = self.read_string(64)?;
-                let _unknown = self.read_bytes(1034)?;
-                let vehicle_addr = self.source.read_u16::<LittleEndian>()?;
+                let _unknown = self.read_bytes(2)?;
+                let length = self.source.read_i32::<LittleEndian>()?;
+                let venue_best_lap = self.source.read_i32::<LittleEndian>()?;
+                let _unknown = self.read_bytes(1024)?;
+                let vehicle_addr = self.source.read_u32::<LittleEndian>()?;
 
-                Some(Venue { name, vehicle_addr })
+                Some(Venue { name, length, venue_best_lap, vehicle_addr })
             }
             None => None,
         })
@@ -163,16 +168,35 @@ impl<'a, S: Read + Seek> LDReader<'a, S> {
                     .seek(SeekFrom::Start(venue.vehicle_addr as u64))?;
 
                 let id = self.read_string(64)?;
-                let _unknown = self.read_bytes(128)?;
-                let weight = self.source.read_u32::<LittleEndian>()?;
+                let desc = self.read_string(64)?;
+                let engine_id = self.read_string(64)?;
+                let weight = self.source.read_i16::<LittleEndian>()?;
+                let fuel_tank_i16 = self.source.read_i16::<LittleEndian>()?;
                 let _type = self.read_string(32)?;
-                let comment = self.read_string(32)?;
+                let drive_type = self.read_string(32)?;
+                let mut gear_ratios_i16 = [0_i16;11];
+                for i in 0..11 {
+                    gear_ratios_i16[i] = self.source.read_i16::<LittleEndian>()?;
+                }
+                let track_width = self.source.read_i16::<LittleEndian>()?;
+                let wheel_base = self.source.read_i16::<LittleEndian>()?;
+                // Shows up as Vehicle Laps/Tank under Custom underneath Vehicle in the Details
+                // Is encoded as 2 dec_places, but 0 decimal places are displayed in MoTeC
+                let _custom_vehicle_laps_tank = self.source.read_i16::<LittleEndian>()?; 
+                let comment = self.read_string(1024)?;
 
                 Some(Vehicle {
                     id,
+                    desc,
+                    engine_id,
                     weight,
+                    fuel_tank_i16,
                     _type,
                     comment,
+                    drive_type,
+                    gear_ratios_i16,
+                    track_width,
+                    wheel_base
                 })
             }
             None => None,
@@ -451,6 +475,7 @@ mod tests {
                 session: "2".to_string(),
                 comment: "Calder Park, 23/11/05, fine sunny day".to_string(),
                 venue_addr: 0x1336,
+                weather_addr: 0x2C48
             })
         );
     }
@@ -467,7 +492,9 @@ mod tests {
             venue,
             Some(Venue {
                 name: "Calder".to_string(),
-                vehicle_addr: 0x1F54,
+                length: 0,
+                venue_best_lap: 0,
+                vehicle_addr: 0x1F54
             })
         );
     }
@@ -484,9 +511,16 @@ mod tests {
             vehicle,
             Some(Vehicle {
                 id: "11A".to_string(),
+                desc: "Daytona".to_string(),
+                engine_id: "".to_string(),
                 weight: 0,
+                fuel_tank_i16: 0,
                 _type: "Car".to_string(),
+                drive_type: "".to_string(),
                 comment: "".to_string(),
+                gear_ratios_i16: [0, 0x0A0A, 0x07C6, 0x067C, 0x0546, 0x0474, 0x03E8, 0, 0, 0, 0],
+                wheel_base: 2000,
+                track_width: 0
             })
         );
     }

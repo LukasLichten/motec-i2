@@ -152,24 +152,105 @@ pub struct Event {
     /// Max 1024 chars
     pub comment: String,
 
-    pub venue_addr: u16,
+    pub venue_addr: u32,
+
+    pub weather_addr: u32, // TODO Add Weather data
 }
 
 #[derive(Debug, Clone, PartialEq, Hash)]
 pub struct Venue {
     /// Max 64 chars
     pub name: String,
+    /// Measured in mm, or 10^-3m (aka meter with 3 dec_place)
+    pub length: i32,
+    /// Shows up as Venue Best Lap under Custom underneath Vehicle in the Details
+    /// Measured in ms
+    pub venue_best_lap: i32,
 
-    pub vehicle_addr: u16,
+    pub vehicle_addr: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Hash)]
 pub struct Vehicle {
     /// Max 64 chars
     pub id: String,
-    pub weight: u32,
+    /// Max 64 chars
+    pub desc: String,
+    /// Max 64 chars
+    pub engine_id: String,
+    /// Measured in kg
+    pub weight: i16,
+    /// Measured in 10^(-1)liter (aka 1 dec_place)
+    pub fuel_tank_i16: i16,
     /// Max 32 chars
     pub _type: String,
     /// Max 32 chars
+    pub drive_type: String,
+    /// Max 1024 chars
     pub comment: String,
+    /// Gear Ratios, stored as a 3 dec_places value
+    /// index 0 is diff (final drive), index 1-10 are Gears 1-10
+    pub gear_ratios_i16: [i16;11],
+    /// Track width, messured in mm
+    pub track_width: i16,
+    /// Wheelbase, messured in mm
+    pub wheel_base: i16
+}
+
+impl Vehicle {
+
+    /// Retrieves the real values for the gear ratios
+    /// Diff (Final drive) is Index 0, Index 1-11 is Gear 1-11
+    /// If gear ratio is 0 (treated as none by MoTeC) it returns NaN
+    pub fn get_float_ratios(& self) -> [f64;11] {
+        let mut ratios = [f64::NAN;11];
+        let mut index = 0;
+        for r in self.gear_ratios_i16 {
+            if r != 0 {
+                ratios[index] = r as f64;
+                ratios[index] *= 10.0f64.powi(-3); 
+            }
+            
+            index += 1;
+        }
+
+        ratios
+    }
+
+    /// Simpler function for writing gear ratios
+    /// Diff (Final drive) is Index 0, Index 1-11 is Gear 1-11
+    /// All index not included in the vector will be set to 0 (treated as none by MoTeC)
+    pub fn with_float_ratios(mut self, ratios: Vec<f64>) -> Self {
+        self.gear_ratios_i16 = [0_i16;11]; 
+
+        let mut index = 0;
+        for r in ratios {
+            if index >= 10 {
+                break; // in case someone gave us an array that is larger then 10
+            }
+
+            if r.is_normal() { // if NaN or 0 the gear does not exist
+                let r = r * (10.0f64.powi(3));
+                self.gear_ratios_i16[index] = r as i16;
+            }
+
+            index += 1;
+        }
+
+        self
+    }
+
+    /// Returns the fuel tank size in liters
+    pub fn get_fuel_tank_size(& self) -> f64 {
+        let tank = self.fuel_tank_i16 as f64;
+        tank * (10.0f64.powi(-1))
+    }
+
+    /// Simpler function for writing the fueltank size in liters
+    pub fn with_fuel_tank_size(mut self, fuel_tank: f64) -> Self {
+        let fuel_tank = fuel_tank * (10.0f64.powi(1)) + 0.5; // +0.5 serves to round the number correctly instead of just cropping
+        self.fuel_tank_i16 = fuel_tank as i16;
+
+        self
+    }
 }

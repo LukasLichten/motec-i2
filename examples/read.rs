@@ -27,12 +27,13 @@ fn main() -> I2Result<()> {
     let channels = reader.read_channels()?;
     println!("File has {} channels", channels.len());
 
-    let channel = &channels[0];
+    let index = 0;
+    let channel = &channels[index];
     println!(
-        "Reading channel 0: {} ({} samples at {} Hz)",
-        channel.name, channel.data_count, channel.sample_rate
+        "Reading channel {}: {} ({} samples at {} Hz)",
+        index, channel.name, channel.data_count, channel.sample_rate
     );
-    println!("Channle: {:#?}", channel);
+    println!("Channel: {:#?}", channel);
 
     let data = reader.channel_data(channel)?;
     for i in 0..6 {
