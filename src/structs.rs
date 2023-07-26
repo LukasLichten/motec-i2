@@ -26,6 +26,7 @@ pub struct Header {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Sample {
+    I8(i8),
     I16(i16),
     I32(i32),
     F32(f32),
@@ -35,13 +36,14 @@ impl Sample {
     /// Calculates the final value of this sample as a f64
     pub fn decode_f64(&self, channel: &ChannelMetadata) -> f64 {
         let value = match self {
+            Sample::I8(v) => *v as f64,
             Sample::I16(v) => *v as f64,
             Sample::I32(v) => *v as f64,
             Sample::F32(v) => *v as f64,
         };
 
         // TODO: Offset not yet supported
-        assert_eq!(channel.offset, 0);
+        //assert_eq!(channel.offset, 0);
         let value = value / channel.scale as f64;
         let value = value * (10.0f64.powi(-channel.dec_places as i32));
         let value = value * channel.mul as f64;
@@ -55,7 +57,7 @@ pub enum Datatype {
     // It behaves as an integer of the same size
     Beacon16,
     Beacon32,
-
+    I8,
     I16,
     I32,
 
@@ -69,6 +71,7 @@ impl Datatype {
     /// Size in bytes that this datatype occupies on file
     pub fn size(&self) -> u16 {
         match self {
+            Datatype::I8 => 1,
             Datatype::Beacon16 | Datatype::I16 | Datatype::F16 => 2,
             Datatype::Beacon32 | Datatype::I32 | Datatype::F32 => 4,
 
@@ -80,7 +83,7 @@ impl Datatype {
     pub fn _type(&self) -> u16 {
         match self {
             Datatype::Beacon16 | Datatype::Beacon32 => 0,
-            Datatype::I16 | Datatype::I32 => 3,
+            Datatype::I8 | Datatype::I16 | Datatype::I32 => 3,
             Datatype::F16 | Datatype::F32 => 7,
             Datatype::Invalid => 999,
         }
@@ -90,6 +93,7 @@ impl Datatype {
         match (_type, size) {
             (0, 2) => Ok(Datatype::Beacon16),
             (0, 4) => Ok(Datatype::Beacon32),
+            (3, 1) => Ok(Datatype::I8), // From DAMP Plugin
             (3, 2) => Ok(Datatype::I16),
             (3, 4) => Ok(Datatype::I32),
             // 20160903-0051401.ld uses 5 for ints?

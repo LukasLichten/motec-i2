@@ -285,6 +285,10 @@ impl<'a, S: Read + Seek> LDReader<'a, S> {
             .map(|_| {
                 Ok({
                     match channel.datatype {
+                        Datatype::I8 => {
+                            Sample::I8(self.source.read_i8()?)
+                        }
+
                         Datatype::Beacon16 | Datatype::I16 => {
                             Sample::I16(self.source.read_i16::<LittleEndian>()?)
                         }
@@ -418,6 +422,7 @@ mod tests {
                 name: "Steered Angle".to_owned(),
                 short_name: "Steered".to_owned(),
                 unit: "deg".to_owned(),
+                strange_value: 0
             }
         );
     }

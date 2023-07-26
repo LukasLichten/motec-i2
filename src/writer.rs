@@ -202,6 +202,7 @@ impl<'a, S: Write + Seek> LDWriter<'a, S> {
 
         for s in sample {
             match s {
+                Sample::I8(i) => self.sink.write_i8(*i)?,
                 Sample::I16(i) => self.sink.write_i16::<LittleEndian>(*i)?,
                 Sample::I32(i) => self.sink.write_i32::<LittleEndian>(*i)?,
                 Sample::F32(f) => self.sink.write_f32::<LittleEndian>(*f)?,
