@@ -172,8 +172,7 @@ impl<'a, S: Write + Seek> LDWriter<'a, S> {
         self.sink.write_u32::<LittleEndian>(channel.data_addr)?;
         self.sink.write_u32::<LittleEndian>(channel.data_count)?;
 
-        // TODO: Not sure what this is...
-        self.sink.write_u16::<LittleEndian>(4u16)?;
+        self.sink.write_u16::<LittleEndian>(channel.channel_feature_flag.get_value())?;
 
         self.sink
             .write_u16::<LittleEndian>(channel.datatype._type())?;
@@ -226,7 +225,7 @@ impl<'a, S: Write + Seek> LDWriter<'a, S> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{ChannelMetadata, Datatype, Header, LDWriter, Sample};
+    use crate::{ChannelMetadata, Datatype, Header, LDWriter, Sample, ChannelFlag};
     use std::io::Cursor;
     use std::iter;
 
@@ -293,6 +292,7 @@ mod tests {
             name: "Air Temp Inlet".to_string(),
             short_name: "Air Tem".to_string(),
             unit: "C".to_string(),
+            channel_feature_flag: ChannelFlag::Default,
         };
 
         let samples = vec![
@@ -353,6 +353,7 @@ mod tests {
             name: "Air Temp Inlet".to_string(),
             short_name: "Air Tem".to_string(),
             unit: "C".to_string(),
+            channel_feature_flag: ChannelFlag::Default,
         };
         let channel0_samples = vec![
             Sample::I16(190),
@@ -375,6 +376,7 @@ mod tests {
             name: "Engine temp".to_string(),
             short_name: "EngTemp".to_string(),
             unit: "C".to_string(),
+            channel_feature_flag: ChannelFlag::Default,
         };
         let channel1_samples = vec![
             Sample::I32(387867788),

@@ -1,4 +1,4 @@
-use motec_i2::{ChannelMetadata, Datatype, Header, I2Result, LDWriter, Sample};
+use motec_i2::{ChannelMetadata, Datatype, Header, I2Result, LDWriter, Sample, ChannelFlag};
 use std::fs::File;
 
 fn main() -> I2Result<()> {
@@ -38,6 +38,7 @@ fn main() -> I2Result<()> {
         name: "Air Temp Inlet".to_string(),
         short_name: "Air Tem".to_string(),
         unit: "C".to_string(),
+        channel_feature_flag: ChannelFlag::Default
     };
     let channel0_samples = vec![
         Sample::I16(190),
@@ -72,6 +73,7 @@ fn main() -> I2Result<()> {
         name: "GPS Latitude".to_string(),
         short_name: "GPS Lat".to_string(),
         unit: "deg".to_string(),
+        channel_feature_flag: ChannelFlag::Default
     };
     let gps_lat_samples = vec![
         Sample::I32(387867788),

@@ -1,4 +1,4 @@
-use crate::{ChannelMetadata, Datatype, Event, Header, I2Error, I2Result, Sample, Vehicle, Venue};
+use crate::{ChannelMetadata, Datatype, Event, Header, I2Error, I2Result, Sample, Vehicle, Venue, ChannelFlag};
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::{Read, Seek, SeekFrom};
 use std::{io, iter};
@@ -238,11 +238,18 @@ impl<'a, S: Read + Seek> LDReader<'a, S> {
         let data_addr = self.source.read_u32::<LittleEndian>()?;
         let data_count = self.source.read_u32::<LittleEndian>()?;
 
-        let _unknown = self.source.read_u16::<LittleEndian>()?;
+        let feature_flag = self.source.read_u16::<LittleEndian>()?;
 
         let datatype_type = self.source.read_u16::<LittleEndian>()?;
         let datatype_size = self.source.read_u16::<LittleEndian>()?;
         let datatype = Datatype::from_type_and_size(datatype_type, datatype_size)?;
+
+        let channel_feature_flag = match feature_flag {
+            0x00 => ChannelFlag::Disabled,
+            0x04 => ChannelFlag::Default,
+            0x6e => ChannelFlag::Beacon, // TODO Maybe we want to check if the channel is the beacon?
+            _ => ChannelFlag::Custom(feature_flag)
+        };
 
         let sample_rate = self.source.read_u16::<LittleEndian>()?;
 
@@ -270,6 +277,7 @@ impl<'a, S: Read + Seek> LDReader<'a, S> {
             name,
             short_name,
             unit,
+            channel_feature_flag
         })
     }
 
@@ -328,7 +336,7 @@ impl<'a, S: Read + Seek> LDReader<'a, S> {
 #[cfg(test)]
 mod tests {
     use crate::reader::LDReader;
-    use crate::{ChannelMetadata, Datatype, Event, Header, Sample, Vehicle, Venue};
+    use crate::{ChannelMetadata, Datatype, Event, Header, Sample, Vehicle, Venue, ChannelFlag};
     use std::fs;
     use std::io::Cursor;
 
@@ -384,6 +392,7 @@ mod tests {
                 name: "Air Temp Inlet".to_owned(),
                 short_name: "Air Tem".to_owned(),
                 unit: "C".to_owned(),
+                channel_feature_flag: ChannelFlag::Default,
             }
         );
 
@@ -403,6 +412,7 @@ mod tests {
                 name: "Brake Temp FL".to_owned(),
                 short_name: "Brake T".to_owned(),
                 unit: "C".to_owned(),
+                channel_feature_flag: ChannelFlag::Custom(0x0F50),
             }
         );
 
@@ -422,7 +432,7 @@ mod tests {
                 name: "Steered Angle".to_owned(),
                 short_name: "Steered".to_owned(),
                 unit: "deg".to_owned(),
-                strange_value: 0
+                channel_feature_flag: ChannelFlag::Custom(0x4E8F)
             }
         );
     }

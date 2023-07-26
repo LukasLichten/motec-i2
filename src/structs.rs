@@ -135,6 +135,11 @@ pub struct ChannelMetadata {
     pub name: String,
     pub short_name: String,
     pub unit: String,
+    
+    /// Mainly serves to activate the Beacon
+    /// Otherwise leave at Default, or when reparsing data you can pass in the old value in Custom
+    /// Disabling is not 100% understood, one channel can be turned off, but more and at some point the file gets bricked
+    pub channel_feature_flag: ChannelFlag
 }
 
 impl ChannelMetadata {
@@ -144,6 +149,32 @@ impl ChannelMetadata {
     /// Calculates the size in bytes of the data section for this channel
     pub(crate) fn data_size(&self) -> u32 {
         self.data_count * self.datatype.size() as u32
+    }
+}
+
+/// This serves to activate features on a channel
+/// 0x6e on the beacon channel activates it, allowing laps to be defined
+/// 0x00 disables a channel (setting all channels, even except one, disabled will break the file. TODO find the other required channel)
+/// 0x04 is normal (default), 0x01-0x03 seem to be too, but we stick to 0x04
+/// 
+/// Additionaly statuses and the like seem to be activated with this flag. How? TODO
+#[derive(Debug, Clone, PartialEq, Hash)]
+pub enum ChannelFlag {
+    Default,
+    Beacon,
+    Disabled,
+    Custom(u16)
+}
+
+impl ChannelFlag {
+    /// Retrieves the value that needs to be written to the file
+    pub fn get_value(& self) -> u16 {
+        match self {
+            ChannelFlag::Default => 0x04,
+            ChannelFlag::Beacon => 0x6e,
+            ChannelFlag::Disabled => 0x00,
+            ChannelFlag::Custom(v) => v.clone()
+        }
     }
 }
 
